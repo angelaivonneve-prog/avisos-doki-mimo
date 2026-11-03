@@ -1,4 +1,4 @@
-// Robot de avisos de Doki y Mimo: revisa la cola de cada app y manda el aviso al dispositivo que usaste por último.
+// Robot de avisos de Doki, Mimo y Cuki: revisa la cola de cada app y manda el aviso al dispositivo que usaste por último.
 import admin from "firebase-admin";
 admin.initializeApp({ credential: admin.credential.cert(JSON.parse(process.env.FIREBASE_SA)) });
 const db = admin.firestore(), fcm = admin.messaging();
@@ -6,13 +6,13 @@ const now = Date.now(), LATE = 45 * 60000, ACTIVE = 3 * 3600000;
 const safe = k => k.replace(/[.\/]/g, "_");
 let sent = 0;
 for (const u of await db.collection("users").listDocuments()) {
-  const [qd, qm, fd, devs] = await Promise.all([
-    u.collection("push").doc("q_doki").get(), u.collection("push").doc("q_mimi").get(),
+  const [qd, qm, qc, fd, devs] = await Promise.all([
+    u.collection("push").doc("q_doki").get(), u.collection("push").doc("q_mimi").get(), u.collection("push").doc("q_cuki").get(),
     u.collection("push").doc("fired").get(), u.collection("devices").get()]);
   const fired = fd.exists ? fd.data() : {};
   const devices = devs.docs.map(d => ({ id: d.id, ref: d.ref, ...d.data() })).filter(d => d.token && d.on !== false);
   if (!devices.length) continue;
-  const due = [qd, qm].flatMap(q => (q.exists && q.data().items) || []).filter(it => it.at <= now && it.at > now - LATE && !fired[safe(it.k)]);
+  const due = [qd, qm, qc].flatMap(q => (q.exists && q.data().items) || []).filter(it => it.at <= now && it.at > now - LATE && !fired[safe(it.k)]);
   const mark = {};
   for (const it of due) {
     const mine = devices.filter(d => d.app === it.app).sort((a, b) => (b.last || 0) - (a.last || 0));
