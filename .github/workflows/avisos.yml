@@ -1,0 +1,28 @@
+name: Avisos de Doki y Mimo
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  avisar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm install --no-save --no-audit --no-fund firebase-admin@12
+      - run: node send.mjs
+        env:
+          FIREBASE_SA: ${{ secrets.FIREBASE_SA }}
+      # GitHub apaga los horarios si el repositorio pasa 60 días sin cambios: esto lo mantiene despierto
+      - name: Mantener despierto
+        run: |
+          if [ "$(date -u +%d%H)" = "0100" ] || [ "$(date -u +%d%H)" = "1500" ]; then
+            date > despierto.txt
+            git config user.name "doki-bot"; git config user.email "doki-bot@users.noreply.github.com"
+            git add despierto.txt && git commit -m "Mantener los avisos activos" && git push || true
+          fi
