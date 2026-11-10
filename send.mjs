@@ -1,8 +1,15 @@
 // Robot de avisos de Doki, Mimo y Cuki: revisa la cola de cada app y manda el aviso al dispositivo que usaste por último.
 import admin from "firebase-admin";
-const SA = (process.env.FIREBASE_SA || "").trim();
-if (!SA.startsWith("{")) { console.log("Falta la llave FIREBASE_SA en Settings → Secrets → Actions. Sin ella no puedo mandar avisos (no es un error de las apps)."); process.exit(0); }
-admin.initializeApp({ credential: admin.credential.cert(JSON.parse(SA)) });
+let SA = (process.env.FIREBASE_SA || "").trim();
+// tolera comillas de más, texto alrededor o la llave en base64
+if (!SA.startsWith("{") && /^[A-Za-z0-9+/=\s]+$/.test(SA) && SA.length > 100) { try { SA = Buffer.from(SA, "base64").toString("utf8").trim(); } catch (e) {} }
+if (SA.includes("{") && SA.includes("}")) SA = SA.slice(SA.indexOf("{"), SA.lastIndexOf("}") + 1);
+let CRED = null; try { CRED = JSON.parse(SA); if (typeof CRED === "string") CRED = JSON.parse(CRED); } catch (e) {}
+if (!CRED || !CRED.private_key || !CRED.client_email) {
+  console.log("La llave FIREBASE_SA no tiene el formato correcto (largo: " + SA.length + " caracteres; ¿empieza con { ?: " + SA.startsWith("{") + "; tiene private_key: " + SA.includes("private_key") + "). Pega TODO el contenido del archivo .json descargado.");
+  process.exit(0);
+}
+admin.initializeApp({ credential: admin.credential.cert(CRED) });
 const db = admin.firestore(), fcm = admin.messaging();
 const now = Date.now(), LATE = 45 * 60000, ACTIVE = 3 * 3600000;
 const safe = k => k.replace(/[.\/]/g, "_");
