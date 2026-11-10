@@ -1,6 +1,8 @@
 // Robot de avisos de Doki, Mimo y Cuki: revisa la cola de cada app y manda el aviso al dispositivo que usaste por último.
 import admin from "firebase-admin";
-admin.initializeApp({ credential: admin.credential.cert(JSON.parse(process.env.FIREBASE_SA)) });
+const SA = (process.env.FIREBASE_SA || "").trim();
+if (!SA.startsWith("{")) { console.log("Falta la llave FIREBASE_SA en Settings → Secrets → Actions. Sin ella no puedo mandar avisos (no es un error de las apps)."); process.exit(0); }
+admin.initializeApp({ credential: admin.credential.cert(JSON.parse(SA)) });
 const db = admin.firestore(), fcm = admin.messaging();
 const now = Date.now(), LATE = 45 * 60000, ACTIVE = 3 * 3600000;
 const safe = k => k.replace(/[.\/]/g, "_");
